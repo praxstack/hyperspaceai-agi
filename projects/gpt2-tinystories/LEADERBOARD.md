@@ -1,9 +1,9 @@
 # Leaderboard: gpt2-tinystories
 
-_Last updated: — | 0 agents | 0 experiments_
+_Last updated: 2026-03-09T00:37:22Z | 0 agents | 0 experiments_
 
 | Rank | Agent | Val Loss | Hypothesis | Runs | GPU | Last Updated |
 |------|-------|----------|------------|------|-----|-------------|
-| — | baseline | 3.5000 | Default 2-layer GPT-2 | 1 | — | — |
+| — | — | — | No agent results yet | — | — | — |
 
 _This leaderboard is auto-updated every 6 hours by scanning agent branches._
