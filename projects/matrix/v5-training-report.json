@@ -2,7 +2,7 @@
   "model": "matrix-2-v5",
   "backbone": "Qwen/Qwen2.5-1.5B",
   "colbert_dim": 128,
-  "capabilities_indexed": 66016,
+  "capabilities_indexed": 100000,
   "training": {
     "samples": 188993,
     "original_samples": 138993,
@@ -10,7 +10,7 @@
     "epochs": 30,
     "batch_size": 1024,
     "learning_rate": 0.0002,
-    "hardware": "NVIDIA H100 80GB HBM3",
+    "hardware": "NVIDIA GPU",
     "wall_time_minutes": 92.8,
     "trainable_params": 278409583,
     "frozen_backbone_params": 1543714304
