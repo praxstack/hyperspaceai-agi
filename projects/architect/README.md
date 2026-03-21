@@ -1,57 +1,60 @@
-# DAG-1 — Task Decomposition for the Gossip Network
+# Architect — Neural Project Planning
 
-**Describe a complex task. DAG-1 decomposes it into a parallelizable subtask graph, caches the plan, and shares it across the P2P network.**
+**Describe what you want to build. Architect decomposes it into a deeply-nested, parallelizable subtask graph — then caches and shares the plan across the P2P network.**
 
-The network remembers how to solve problems.
+Every agent on the network contributes plans. Every agent benefits from every other agent's experience. The network learns how to build things.
 
 ## Try It
 
-**Web:** [dag.hyper.space](https://dag.hyper.space)
+**Web:** [architect.hyper.space](https://architect.hyper.space)
 
 **CLI:**
 ```bash
-hyperspace dag "deploy my app to kubernetes with monitoring"
+hyperspace architect "deploy my app to kubernetes with monitoring"
 ```
 
 **SDK:**
 ```javascript
-const dag = await hyperspace.dag.decompose(
+const plan = await hyperspace.architect.plan(
   'Build a React landing page with auth and monitoring'
 )
-// → { subtasks: 6, criticalPath: 3, maxParallelism: 3, confidence: 0.87 }
+// → { subtasks: 18, criticalPath: 7, maxParallelism: 4, confidence: 0.89 }
+
+// Execute: Architect runs subtasks in parallel where possible
+await hyperspace.architect.execute(plan)
 ```
 
 ## What It Does
 
-DAG-1 takes a complex task and produces a `TaskDag` — a directed acyclic graph of typed subtasks with dependency edges, critical path analysis, and parallelism detection.
+Architect takes a complex task description and produces a `TaskDag` — a deeply-nested directed acyclic graph of typed subtasks with dependency edges, critical path analysis, and parallelism detection. Plans are 15-22 nodes deep, not flat.
 
 ```
-Task: "Build a React landing page with auth"
+Task: "Build a React e-commerce store with auth and Stripe"
 
-                ┌──────────────────────┐
-                │  DAG-1 decompose     │
-                └────┬──────┬──────┬───┘
-                     ▼      ▼      ▼
-              ┌──────┐┌──────┐┌──────┐     ← depth 1 (parallel)
-              │ S1   ││ S2   ││ S3   │
-              │scaf- ││design││config│
-              │fold  ││system││ auth │
-              └──┬───┘└──┬───┘└──┬───┘
-                 ▼       ▼       ▼
-              ┌──────┐ ┌──────┐         ← depth 2 (parallel)
-              │ S4   │ │ S5   │
-              │pages │ │wire  │
-              │      │ │auth  │
-              └──┬───┘ └──┬───┘
-                 ▼        ▼
-              ┌────────────┐             ← depth 3 (sync)
-              │    S6      │
-              │test+deploy │
-              └────────────┘
+  ┌─ scaffold ─┐  ┌─ design tokens ─┐  ┌─ DB schema ─┐  ┌─ env config ─┐
+  └──────┬─────┘  └───────┬─────────┘  └──────┬──────┘  └──────┬──────┘
+         │                │                    │                │
+         ▼                ▼                    ▼                ▼
+    ┌─ install deps ─┐  ┌─ component lib ─┐  ┌─ migrations ─┐  ┌─ auth cfg ─┐
+    └───────┬────────┘  └───────┬─────────┘  └──────┬───────┘  └─────┬─────┘
+            │                   │                    │                │
+            ▼                   ▼                    ▼                ▼
+       ┌─ product catalog ─┐  ┌─ checkout UI ─┐  ┌─ data layer ─┐  ┌─ auth MW ─┐
+       └────────┬──────────┘  └───────┬───────┘  └──────┬───────┘  └─────┬────┘
+                │                     │                  │               │
+                ▼                     ▼                  ▼               ▼
+           ┌─ cart + totals ─┐  ┌─ Stripe webhooks ─┐  ┌─ auth pages ─┐
+           └────────┬────────┘  └────────┬──────────┘  └──────┬───────┘
+                    │                    │                     │
+                    ▼                    ▼                     ▼
+               ┌─ unit tests ─┐  ┌─ integration tests ─┐  ┌─ E2E tests ─┐
+               └──────┬───────┘  └─────────┬───────────┘  └──────┬──────┘
+                      │                    │                      │
+                      ▼                    ▼                      ▼
+                 ┌─ deploy to production ─┐  ┌─ post-deploy verify ─┐
+                 └────────────────────────┘  └──────────────────────┘
 
-Critical path: S2 → S4 → S6 (longest chain)
-Max parallelism: 3 (S1 + S2 + S3 run together)
-Wall-clock: ~2 min 25s (vs ~4 min sequential)
+  8 depth levels · 18 subtasks · max parallelism 4
 ```
 
 ## Architecture
@@ -83,14 +86,14 @@ Four layers, one cache:
 
 ## Cache Resolution
 
-When a task arrives, DAG-1 tries to skip inference entirely:
+When a task arrives, Architect tries to skip inference entirely:
 
 | Step | Method | Latency | Tokens |
 |------|--------|---------|--------|
 | 1 | Local cache (SHA-256 exact match) | ~2ms | 0 |
 | 2 | Similarity index (MinHash + cosine) | ~15ms | 0 |
 | 3 | DHT provider query (fetch from peers) | ~200ms | 0 |
-| 4 | DAG-1 LLM inference (fallback) | ~3-8s | 500-2,000 |
+| 4 | Architect LLM inference (fallback) | ~3-8s | 500-2,000 |
 
 Each resolution caches the result. Future lookups are faster for everyone.
 
@@ -99,14 +102,16 @@ Each resolution caches the result. Future lookups are faster for everyone.
 On a centralized platform, cached plans live on one server. On Hyperspace, **every node contributes to and benefits from a shared plan cache**.
 
 ```
-Node A: 47 k8s deployment plans
-Node B: 23 React build plans
-Node C: 31 API endpoint plans
+Node A (GPU server):  47 k8s deployment plans
+Node B (laptop):      23 React build plans
+Node C (browser):     31 API endpoint plans
     ↓
     GossipSub announcements
     ↓
 New node joins → DHT query → finds plans instantly
 → Zero inference. Zero tokens. Just cache hits.
+
+More nodes → more plans → fewer misses → intelligence compounds.
 ```
 
 Three gossip channels:
@@ -115,7 +120,7 @@ Three gossip channels:
 /hyperspace/dag-cache/1.0.0
 
 Gossip topics:
-  hyperspace/dag-cache/announcements  — new DAG plans available
+  hyperspace/dag-cache/announcements  — new plans available
   /dag-plans/<hash>                   — DHT provider records
   hyperspace/dag-cache/outcomes       — execution results (self-curating)
 ```
@@ -133,32 +138,20 @@ interface TaskDag {
   criticalPath: string[]       // Longest dependency chain
   maxParallelism: number       // Width of widest parallel level
   totalSubtasks: number
-  confidence: number           // DAG-1's confidence (0-1)
+  confidence: number           // Architect's confidence (0-1)
   reasoning: string            // Why this decomposition
 }
 
 interface DagSubtask {
   id: string
   description: string
-  agentType: string            // coding | design | infra | testing
+  agentType: string            // coding | design | infra | testing | research
   estimatedDurationMs: number
   dependencies: string[]
   parallelizable: boolean
   priority: number             // 1-10
 }
 ```
-
-## Research DAG
-
-DAG-1 also powers the `ResearchDAG` — a flywheel-style graph for autonomous research:
-
-- **Observations** — papers, articles, datasets discovered by agents
-- **Experiments** — hypotheses tested with code artifacts
-- **Syntheses** — LLM-generated insights combining multiple parents
-- **Edge types** — inspired_by, tests, refutes, extends, synthesizes, mutated_from, cross_domain_transfer
-- **7 domains** — ml-training, search-ranking, finance, skills, knowledge, infrastructure, physics
-
-Content-addressed, append-only, P2P-shareable. The research history of the network as a DAG.
 
 ## Implementation
 
